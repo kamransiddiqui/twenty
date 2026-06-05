@@ -4,7 +4,7 @@ import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
 import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
-import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
+import { jotaiStore, resetJotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
 import { renderHook, waitFor } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
 import { createElement, useEffect, type ReactNode } from 'react';
@@ -152,6 +152,27 @@ describe('useDefaultHomePagePath', () => {
 
     await waitFor(() => {
       expect(result.current.defaultHomePagePath).toEqual(AppPath.Index);
+    });
+  });
+  // Regression: lastVisitedObjectMetadataItemIdState must hydrate from
+  // localStorage on init so the home redirect respects the last-visited
+  // object instead of always falling back to the alphabetical first.
+  it('should return path for last-visited object when one is persisted', async () => {
+    resetJotaiStore();
+    const personObjectMetadataItem =
+      getMockObjectMetadataItemOrThrow('person');
+    localStorage.setItem(
+      'lastVisitedObjectMetadataItemIdState',
+      JSON.stringify(personObjectMetadataItem.id),
+    );
+
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual('/objects/people');
     });
   });
 });
