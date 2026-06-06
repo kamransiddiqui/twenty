@@ -59,11 +59,12 @@ export const createAtomState = <ValueType>({
       getOnInit: true,
     }) as StateAtom<ValueType>;
   } else if (useLocalStorage) {
+    const storage = createJSONStorage<ValueType>(() => localStorage);
     baseAtom = atomWithStorage<ValueType>(
       key,
       defaultValue,
-      undefined,
-      localStorageOptions ?? undefined,
+      storage,
+      { getOnInit: true, ...localStorageOptions },
     ) as StateAtom<ValueType>;
   } else {
     baseAtom = atom(defaultValue);

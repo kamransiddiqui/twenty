@@ -2,6 +2,7 @@ import { currentUserState } from '@/auth/states/currentUserState';
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
+import { lastVisitedObjectMetadataItemIdState } from '@/navigation/states/lastVisitedObjectMetadataItemIdState';
 import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
@@ -98,6 +99,10 @@ const renderHooks = ({
 };
 
 describe('useDefaultHomePagePath', () => {
+  afterEach(() => {
+    jotaiStore.set(lastVisitedObjectMetadataItemIdState.atom, null);
+  });
+
   it('should return proper path when no currentUser', async () => {
     const { result } = renderHooks({
       withCurrentUser: false,
@@ -152,6 +157,27 @@ describe('useDefaultHomePagePath', () => {
 
     await waitFor(() => {
       expect(result.current.defaultHomePagePath).toEqual(AppPath.Index);
+    });
+  });
+  // Regression: lastVisitedObjectMetadataItemIdState must hydrate on init and
+  // the hook must react to it, otherwise the alphabetically-first object is
+  // always returned.
+  it('should redirect to the last-visited object instead of the alphabetically first one', async () => {
+    const personObjectMetadataItem =
+      getMockObjectMetadataItemOrThrow('person');
+
+    jotaiStore.set(
+      lastVisitedObjectMetadataItemIdState.atom,
+      personObjectMetadataItem.id,
+    );
+
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual('/objects/people');
     });
   });
 });
