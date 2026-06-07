@@ -33,12 +33,10 @@ export const createAtomFamilyState = <ValueType, FamilyKey>({
 
     const atomKey = `${key}__${cacheKey}`;
     const baseAtom = useLocalStorage
-      ? atomWithStorage<ValueType>(
-          atomKey,
-          defaultValue,
-          undefined,
-          localStorageOptions ?? undefined,
-        )
+      ? atomWithStorage<ValueType>(atomKey, defaultValue, undefined, {
+          getOnInit: true,
+          ...localStorageOptions,
+        })
       : atom(defaultValue);
     baseAtom.debugLabel = atomKey;
     atomCache.set(cacheKey, baseAtom);
