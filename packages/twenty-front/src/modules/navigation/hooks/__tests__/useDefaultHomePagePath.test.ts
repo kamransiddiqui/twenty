@@ -2,6 +2,7 @@ import { currentUserState } from '@/auth/states/currentUserState';
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
+import { lastVisitedObjectMetadataItemIdState } from '@/navigation/states/lastVisitedObjectMetadataItemIdState';
 import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
@@ -9,6 +10,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
 import { createElement, useEffect, type ReactNode } from 'react';
 import { AppPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
 import {
   ViewOpenRecordIn,
   ViewType,
@@ -27,10 +29,12 @@ const renderHooks = ({
   withCurrentUser,
   withExistingView,
   withObjectMetadataLoaded = true,
+  withLastVisitedObjectMetadataItemId,
 }: {
   withCurrentUser: boolean;
   withExistingView: boolean;
   withObjectMetadataLoaded?: boolean;
+  withLastVisitedObjectMetadataItemId?: string;
 }) => {
   if (withObjectMetadataLoaded) {
     setTestObjectMetadataItemsInMetadataStore(
@@ -50,6 +54,9 @@ const renderHooks = ({
       const setCurrentUser = useSetAtomState(currentUserState);
       const setCurrentUserWorkspace = useSetAtomState(
         currentUserWorkspaceState,
+      );
+      const setLastVisitedObjectMetadataItemId = useSetAtomState(
+        lastVisitedObjectMetadataItemIdState,
       );
 
       useEffect(() => {
@@ -86,7 +93,17 @@ const renderHooks = ({
           setCurrentUser(mockedUserData);
           setCurrentUserWorkspace(mockedUserData.currentUserWorkspace);
         }
-      }, [setCurrentUser, setCurrentUserWorkspace]);
+
+        if (isDefined(withLastVisitedObjectMetadataItemId)) {
+          setLastVisitedObjectMetadataItemId(
+            withLastVisitedObjectMetadataItemId,
+          );
+        }
+      }, [
+        setCurrentUser,
+        setCurrentUserWorkspace,
+        setLastVisitedObjectMetadataItemId,
+      ]);
 
       return useDefaultHomePagePath();
     },
@@ -152,6 +169,22 @@ describe('useDefaultHomePagePath', () => {
 
     await waitFor(() => {
       expect(result.current.defaultHomePagePath).toEqual(AppPath.Index);
+    });
+  });
+  // Regression: lastVisitedObjectMetadataItemIdState should be respected
+  // instead of always falling back to the alphabetically-first object.
+  it('should redirect to the last-visited object when one is set', async () => {
+    const personObjectMetadataItem =
+      getMockObjectMetadataItemOrThrow('person');
+
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: false,
+      withLastVisitedObjectMetadataItemId: personObjectMetadataItem.id,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual('/objects/people');
     });
   });
 });
