@@ -2,6 +2,7 @@ import { currentUserState } from '@/auth/states/currentUserState';
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
 import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
+import { lastVisitedObjectMetadataItemIdState } from '@/navigation/states/lastVisitedObjectMetadataItemIdState';
 import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
@@ -9,6 +10,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
 import { createElement, useEffect, type ReactNode } from 'react';
 import { AppPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
 import {
   ViewOpenRecordIn,
   ViewType,
@@ -27,10 +29,12 @@ const renderHooks = ({
   withCurrentUser,
   withExistingView,
   withObjectMetadataLoaded = true,
+  lastVisitedObjectMetadataItemId,
 }: {
   withCurrentUser: boolean;
   withExistingView: boolean;
   withObjectMetadataLoaded?: boolean;
+  lastVisitedObjectMetadataItemId?: string;
 }) => {
   if (withObjectMetadataLoaded) {
     setTestObjectMetadataItemsInMetadataStore(
@@ -43,6 +47,13 @@ const renderHooks = ({
       draft: [],
       status: 'empty',
     });
+  }
+
+  if (isDefined(lastVisitedObjectMetadataItemId)) {
+    jotaiStore.set(
+      lastVisitedObjectMetadataItemIdState.atom,
+      lastVisitedObjectMetadataItemId,
+    );
   }
 
   const { result } = renderHook(
@@ -152,6 +163,22 @@ describe('useDefaultHomePagePath', () => {
 
     await waitFor(() => {
       expect(result.current.defaultHomePagePath).toEqual(AppPath.Index);
+    });
+  });
+  // Regression: lastVisitedObjectMetadataItemIdState must hydrate on init so
+  // that the redirect respects the last-visited object instead of always
+  // falling back to the first alphabetically.
+  it('should redirect to the last-visited object when one is set', async () => {
+    const personObjectMetadataItem = getMockObjectMetadataItemOrThrow('person');
+
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: false,
+      lastVisitedObjectMetadataItemId: personObjectMetadataItem.id,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual('/objects/people');
     });
   });
 });
