@@ -37,7 +37,7 @@ export const createAtomFamilyState = <ValueType, FamilyKey>({
           atomKey,
           defaultValue,
           undefined,
-          localStorageOptions ?? undefined,
+          localStorageOptions ?? { getOnInit: true },
         )
       : atom(defaultValue);
     baseAtom.debugLabel = atomKey;
